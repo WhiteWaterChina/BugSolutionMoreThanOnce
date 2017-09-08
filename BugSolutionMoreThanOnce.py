@@ -13,6 +13,7 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.by import By
 import xlsxwriter
 import datetime
+import sys
 
 
 class BugSolutionMoreThanOnce(wx.Frame):
@@ -165,6 +166,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         browser.find_element_by_id("userPassword").send_keys(password)
         browser.find_element_by_css_selector("#loginBtn").click()
         time.sleep(5)
+        #选择左侧列表的项目管理按钮
         browser.find_element_by_css_selector("#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")
         ActionChains(browser).move_to_element(
             browser.find_element_by_css_selector("#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")).perform()
@@ -187,8 +189,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         self.updatedisplay(("开始抓取信息，开始时间{time_start}".format(time_start=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))).decode('gbk'))
         username = self.input_username.GetValue().strip()
         password = self.input_password.GetValue().strip()
-        project_name_selected = self.combox_project_list.GetValue()
-        list_project_name = []
+        project_name_selected = unicode(self.combox_project_list.GetValue())
         driverpath = os.path.join(os.path.abspath(os.path.curdir), "chromedriver.exe")
         browser = webdriver.Chrome(driverpath)
         # firefoxdriverPath = os.path.abspath(os.path.curdir)
@@ -197,6 +198,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         time.sleep(2)
         # driverpath = os.path.join(os.path.abspath(os.path.curdir), "phantomjs.exe")
         # browser = webdriver.PhantomJS(driverpath)
+
         #进入登录界面
         url = "http://10.7.13.21:2000/"
         browser.get(url)
@@ -205,6 +207,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         browser.find_element_by_id("userPassword").send_keys(password)
         browser.find_element_by_css_selector("#loginBtn").click()
         time.sleep(2)
+        #选择左侧列表的项目管理按钮
         browser.find_element_by_css_selector("div#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")
         ActionChains(browser).move_to_element(
             browser.find_element_by_css_selector("div#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")).perform()
@@ -213,13 +216,24 @@ class BugSolutionMoreThanOnce(wx.Frame):
         WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
         browser.switch_to.frame('mainFrame')
         time.sleep(0.5)
-        ActionChains(browser).move_to_element(browser.find_element_by_link_text("{projectname}".format(projectname=project_name_selected))).perform()
-        browser.find_element_by_link_text("{projectname}".format(projectname=project_name_selected)).click()
+        #选择项目名称
+        name_project = browser.find_element_by_link_text("%s".decode('gbk') % project_name_selected)
+        ActionChains(browser).move_to_element(name_project).perform()
+        name_project.click()
         WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#entityTab_')))
+        #选择问题所在的标签
         browser.switch_to.frame('entityTab_')
         browser.find_element_by_css_selector("li#li_ISU > div").click()
         WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_9')))
         browser.switch_to.frame('tabs_panel_9')
+        time.sleep(0.5)
+        # view_type = browser.find_element_by_css_selector("#viewSelect > span.select-sign")
+        ActionChains(browser).move_to_element(browser.find_element_by_css_selector("div#viewSelect > span.select-sign")).perform()
+        browser.find_element_by_css_selector("div#viewSelect > span.select-sign").click()
+        time.sleep(0.5)
+        # viewItems > li:nth-child(1) > div
+        ActionChains(browser).move_to_element(browser.find_element_by_css_selector("ul#viewItems > li:nth-child(1) > div")).perform()
+        browser.find_element_by_css_selector("ul#viewItems > li:nth-child(1) > div").click()
         time.sleep(0.5)
         list_sn = []
         list_issue_type = []
