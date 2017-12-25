@@ -173,6 +173,14 @@ class BugSolutionMoreThanOnce(wx.Frame):
         browser.find_element_by_css_selector(
             "#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a").click()
         time.sleep(2)
+        #选择二级目录项目管理
+        browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")
+        ActionChains(browser).move_to_element(
+            browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")).perform()
+        browser.find_element_by_css_selector(
+            "li#activeSubMenu > div:nth-child(2) > a").click()
+        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
+        time.sleep(2)
         WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
         browser.switch_to.frame('mainFrame')
         all_project_link = browser.find_elements_by_css_selector("#bodyPanel > table:nth-child(1) > tbody > tr")
@@ -214,9 +222,18 @@ class BugSolutionMoreThanOnce(wx.Frame):
         browser.find_element_by_css_selector(
             "div#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a").click()
         WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
-        browser.switch_to.frame('mainFrame')
+        time.sleep(0.5)
+        #选择二级目录项目管理
+        browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")
+        ActionChains(browser).move_to_element(
+            browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")).perform()
+        browser.find_element_by_css_selector(
+            "li#activeSubMenu > div:nth-child(2) > a").click()
+        # WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
         time.sleep(0.5)
         #选择项目名称
+        browser.switch_to.frame('mainFrame')
+        time.sleep(0.5)
         name_project = browser.find_element_by_link_text("%s".decode('gbk') % project_name_selected)
         ActionChains(browser).move_to_element(name_project).perform()
         name_project.click()
@@ -224,10 +241,11 @@ class BugSolutionMoreThanOnce(wx.Frame):
         #选择问题所在的标签
         browser.switch_to.frame('entityTab_')
         browser.find_element_by_css_selector("li#li_ISU > div").click()
-        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_9')))
-        browser.switch_to.frame('tabs_panel_9')
-        time.sleep(0.5)
-        # view_type = browser.find_element_by_css_selector("#viewSelect > span.select-sign")
+        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_8')))
+        browser.switch_to.frame('tabs_panel_8')
+        #time.sleep(0.5)
+        WebDriverWait(browser, 100).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'div#viewSelect > span.select-sign')))
+        # view_type = browser.find_element_by_css_selector("#viewSelect > span.select-sign")#viewSelect > span.select-text
         ActionChains(browser).move_to_element(browser.find_element_by_css_selector("div#viewSelect > span.select-sign")).perform()
         browser.find_element_by_css_selector("div#viewSelect > span.select-sign").click()
         time.sleep(0.5)
@@ -289,15 +307,15 @@ class BugSolutionMoreThanOnce(wx.Frame):
                 browser.switch_to.frame('mainFrame')
                 WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#entityTab_')))
                 browser.switch_to.frame('entityTab_')
-                WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_9')))
-                browser.switch_to.frame('tabs_panel_9')
+                WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_8')))
+                browser.switch_to.frame('tabs_panel_8')
             browser.switch_to.default_content()
             WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
             browser.switch_to.frame('mainFrame')
             WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#entityTab_')))
             browser.switch_to.frame('entityTab_')
-            WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_9')))
-            browser.switch_to.frame('tabs_panel_9')
+            WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_8')))
+            browser.switch_to.frame('tabs_panel_8')
             current_page_temp = browser.find_element_by_css_selector("#targetPage").get_attribute("Value")
             current_page = int(current_page_temp)
             self.updatedisplay(("完成{current_page_sub}/{total_page_sub}页信息抓取".format(current_page_sub=current_page, total_page_sub=total_pages)).decode('gbk'))
