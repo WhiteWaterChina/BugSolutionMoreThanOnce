@@ -2,18 +2,20 @@
 # -*- coding:cp936 -*-
 # Author:yanshuo@inspur.com
 
-import wx
-import time
-import os
-from threading import Thread
-from selenium import webdriver
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.common.by import By
+import requests
+import re
+from bs4 import BeautifulSoup
 import xlsxwriter
+import os
+import time
 import datetime
-import sys
+from threading import Thread
+import wx
+import urllib2
+
+import base64
+import HTMLParser
+
 
 
 class BugSolutionMoreThanOnce(wx.Frame):
@@ -152,186 +154,365 @@ class BugSolutionMoreThanOnce(wx.Frame):
         self.button_go = event.GetEventObject()
         self.button_go.Disable()
 
+    def updatedisplay(self, msg):
+        t = msg
+        self.output_info.AppendText("%s".decode('gbk') % t)
+        self.output_info.AppendText(os.linesep)
+
     def get_project_list(self, event):
         username = self.input_username.GetValue().strip()
-        password = self.input_password.GetValue().strip()
-        list_project_name = []
-        # driverpath = os.path.join(os.path.abspath(os.path.curdir), "chromedriver.exe")
-        # browser = webdriver.Chrome(driverpath)
-        driverpath = os.path.join(os.path.abspath(os.path.curdir), "phantomjs.exe")
-        browser = webdriver.PhantomJS(driverpath)
-        url = "http://10.7.13.21:2000/"
-        browser.get(url)
-        browser.find_element_by_id("userName").send_keys(username)
-        browser.find_element_by_id("userPassword").send_keys(password)
-        browser.find_element_by_css_selector("#loginBtn").click()
-        time.sleep(5)
-        #选择左侧列表的项目管理按钮
-        browser.find_element_by_css_selector("#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")
-        ActionChains(browser).move_to_element(
-            browser.find_element_by_css_selector("#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")).perform()
-        browser.find_element_by_css_selector(
-            "#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a").click()
-        time.sleep(2)
-        #选择二级目录项目管理
-        browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")
-        ActionChains(browser).move_to_element(
-            browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")).perform()
-        browser.find_element_by_css_selector(
-            "li#activeSubMenu > div:nth-child(2) > a").click()
-        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
-        time.sleep(2)
-        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
-        browser.switch_to.frame('mainFrame')
-        all_project_link = browser.find_elements_by_css_selector("#bodyPanel > table:nth-child(1) > tbody > tr")
-        for item in all_project_link:
-            project_name_text = item.find_element_by_xpath("td[4]/div/span/a").text
-            list_project_name.append(project_name_text)
-        self.combox_project_list.Set(list_project_name)
-        browser.quit()
+        password_input = self.input_password.GetValue().strip()
+        parser = HTMLParser.HTMLParser()
+        password=base64.b64encode(password_input)
+        # use engine to  get cookie
+        url_getsession = "http://10.7.13.21:2000/scripts/base64.js?V=V808R08M02sp06"
+        get_data = requests.session()
+        session = get_data.get(url_getsession).cookies.values()[0]
+        # login 1
+        url_login = "http://10.7.13.21:2000/dwr/call/plaincall/jSystemFilterBean.checkSessionCode.dwr"
+        payload_login = {
+            'callCount': "1",
+            'page': "/",
+            'httpSessionId': "{cookie_session}".format(cookie_session=session),
+            'scriptSessionId': "750F49C3DA1731E1EF25170F88D6526D343",
+            'c0-scriptName': "jSystemFilterBean",
+            'c0-methodName': "checkSessionCode",
+            'c0-id': "0",
+            'c0-param0': "string:N",
+            'c0-param1': "string:",
+            'batchId': "1"
+        }
+        headers_login = {
+            'accept': "*/*",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'connection': "keep-alive",
+            'host': "10.7.13.21:2000",
+            'origin': "http://10.7.13.21:2000",
+            'referer': "http://10.7.13.21:2000/",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'content-type': "text/plain"
+        }
+        login = get_data.post(url_login, data=payload_login, headers=headers_login)
+
+        # check code(login to)
+        url_checkcode = "http://10.7.13.21:2000/j_security_check"
+        headers_checkcode = {
+            'accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'Cache-Control': "max-age=0",
+            'Connection': "keep-alive",
+            'Content-Type': "application/x-www-form-urlencoded",
+            'Host': "10.7.13.21:2000",
+            'Origin': "http://10.7.13.21:2000",
+            'Referer': "http://10.7.13.21:2000/",
+            'Upgrade-Insecure-Requests': "1",
+            'User-Agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
+        }
+        payload_checkcode = "isExpires=1&sessionIndex=&j_username={username_value}&j_password={password_value}&j_validatecode=&remember=on&BROWSER_VERSION=1&REMOTE_LANGUAGE=undefined".format(
+            username_value=username, password_value=password)
+        checkcode = get_data.post(url_checkcode, data=payload_checkcode, headers=headers_checkcode)
+        # get post data for list projects
+        url_page_list_data = "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf"
+        querystring = {"type": "PJT"}
+        headers = {
+            'accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'connection': "keep-alive",
+            'content-type': "application/x-www-form-urlencoded; charset=UTF-8",
+            'origin': "http://10.7.13.21:2000",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'host': "10.7.13.21:2000",
+            'referer': "http://10.7.13.21:2000/main.do",
+            'upgrade-insecure-requests': "1",
+            'cache-control': "no-cache"
+        }
+        page_content = get_data.get(url_page_list_data, headers=headers, params=querystring).text
+        data_to_filter = BeautifulSoup(page_content, "html.parser")
+        viewid = data_to_filter.select('li[issystem="Y"]')[0].attrs['val']
+        # print data_to_filter
+        javax_faces_ViewState_temp = data_to_filter.select('input[id="javax.faces.ViewState"]')[0].attrs['value']
+        javax_faces_ViewState = urllib2.quote(javax_faces_ViewState_temp)
+        cate = data_to_filter.select('input[name="cate"]')[0].attrs['value']
+
+        # get project info
+        url_list_project = "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf"
+        headers_list_project = {
+            'accept': "*/*",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'connection': "keep-alive",
+            'content-type': "application/x-www-form-urlencoded",
+            'origin': "http://10.7.13.21:2000",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'host': "10.7.13.21:2000",
+            'referer': "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf?type=PJT",
+            'Cache-Control': "no-cache"
+        }
+        payload_list_project = "AJAXREQUEST=j_id_jsp_1770895026_0&operate=operate&module=PJT&hideNodes=&toggleNode=&hideAll=1&cate={catevalue}&viewId={viewidvalue}&targetPage=1&orderBy=&orderByType=&headCondition=&filterIds=&operate%3A_fileInfo=&javax.faces.ViewState={javavalue}&operate%3AreflushAll=operate%3AreflushAll".format(
+            catevalue=cate, viewidvalue=viewid, javavalue=javax_faces_ViewState)
+        data_list_project_temp = get_data.post(url_list_project, data=payload_list_project,
+                                               headers=headers_list_project).text
+        data_list_project = BeautifulSoup(data_list_project_temp, "html.parser")
+        data_list_project_after_filter = data_list_project.select('span[id="_ajax:data"]')[0].text
+        name_project = re.findall(r'\\"Name\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
+        belongid_project_list = re.findall(r'\\"ID\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
+        name_project_list = [item.decode('unicode_escape') for item in name_project]
+        self.combox_project_list.Set(name_project_list)
         dlg_info = wx.MessageDialog(None, '项目列表已经获取完毕！'.decode('gbk'), '完成提示'.decode('gbk'), wx.OK | wx.ICON_INFORMATION | wx.STAY_ON_TOP)
         dlg_info.ShowModal()
 
     def run(self):
-        self.button_go.Disable()
         self.updatedisplay(("开始抓取信息，开始时间{time_start}".format(time_start=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))).decode('gbk'))
-        username = self.input_username.GetValue().strip()
-        password = self.input_password.GetValue().strip()
         project_name_selected = unicode(self.combox_project_list.GetValue())
-        driverpath = os.path.join(os.path.abspath(os.path.curdir), "chromedriver.exe")
-        browser = webdriver.Chrome(driverpath)
-        # firefoxdriverPath = os.path.abspath(os.path.curdir)
-        # browser = webdriver.Firefox(firefoxdriverPath)
-        browser.maximize_window()
-        time.sleep(2)
-        # driverpath = os.path.join(os.path.abspath(os.path.curdir), "phantomjs.exe")
-        # browser = webdriver.PhantomJS(driverpath)
+        username = self.input_username.GetValue().strip()
+        password_input = self.input_password.GetValue().strip()
+        parser = HTMLParser.HTMLParser()
+        password=base64.b64encode(password_input)
+        #use engine to  get cookie
+        url_getsession = "http://10.7.13.21:2000/scripts/base64.js?V=V808R08M02sp06"
+        get_data = requests.session()
+        session = get_data.get(url_getsession).cookies.values()[0]
+        #login 1
+        url_login = "http://10.7.13.21:2000/dwr/call/plaincall/jSystemFilterBean.checkSessionCode.dwr"
+        payload_login = {
+            'callCount': "1",
+            'page': "/",
+            'httpSessionId': "{cookie_session}".format(cookie_session=session),
+            'scriptSessionId': "750F49C3DA1731E1EF25170F88D6526D343",
+            'c0-scriptName': "jSystemFilterBean",
+            'c0-methodName': "checkSessionCode",
+            'c0-id': "0",
+            'c0-param0': "string:N",
+            'c0-param1': "string:",
+            'batchId': "1"
+        }
+        headers_login = {
+            'accept': "*/*",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'connection': "keep-alive",
+            'host': "10.7.13.21:2000",
+            'origin': "http://10.7.13.21:2000",
+            'referer': "http://10.7.13.21:2000/",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'content-type': "text/plain"
+        }
+        login = get_data.post(url_login, data=payload_login, headers=headers_login)
 
-        #进入登录界面
-        url = "http://10.7.13.21:2000/"
-        browser.get(url)
-        time.sleep(1)
-        browser.find_element_by_id("userName").send_keys(username)
-        browser.find_element_by_id("userPassword").send_keys(password)
-        browser.find_element_by_css_selector("#loginBtn").click()
-        time.sleep(2)
-        #选择左侧列表的项目管理按钮
-        browser.find_element_by_css_selector("div#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")
-        ActionChains(browser).move_to_element(
-            browser.find_element_by_css_selector("div#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a")).perform()
-        browser.find_element_by_css_selector(
-            "div#rdmLeft > ul > li:nth-child(5) > div.select-top-menu > a").click()
-        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
-        time.sleep(0.5)
-        #选择二级目录项目管理
-        browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")
-        ActionChains(browser).move_to_element(
-            browser.find_element_by_css_selector("li#activeSubMenu > div:nth-child(2) > a")).perform()
-        browser.find_element_by_css_selector(
-            "li#activeSubMenu > div:nth-child(2) > a").click()
-        # WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
-        time.sleep(0.5)
-        #选择项目名称
-        browser.switch_to.frame('mainFrame')
-        time.sleep(0.5)
-        name_project = browser.find_element_by_link_text("%s".decode('gbk') % project_name_selected)
-        ActionChains(browser).move_to_element(name_project).perform()
-        name_project.click()
-        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#entityTab_')))
-        #选择问题所在的标签
-        browser.switch_to.frame('entityTab_')
-        browser.find_element_by_css_selector("li#li_ISU > div").click()
-        WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_8')))
-        browser.switch_to.frame('tabs_panel_8')
-        #time.sleep(0.5)
-        WebDriverWait(browser, 100).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'div#viewSelect > span.select-sign')))
-        # view_type = browser.find_element_by_css_selector("#viewSelect > span.select-sign")#viewSelect > span.select-text
-        ActionChains(browser).move_to_element(browser.find_element_by_css_selector("div#viewSelect > span.select-sign")).perform()
-        browser.find_element_by_css_selector("div#viewSelect > span.select-sign").click()
-        time.sleep(0.5)
-        # viewItems > li:nth-child(1) > div
-        ActionChains(browser).move_to_element(browser.find_element_by_css_selector("ul#viewItems > li:nth-child(1) > div")).perform()
-        browser.find_element_by_css_selector("ul#viewItems > li:nth-child(1) > div").click()
-        time.sleep(0.5)
-        list_sn = []
-        list_issue_type = []
-        list_title = []
-        list_operation_people = []
-        list_create_date = []
-        list_verify_date = []
-        total_pages = int(browser.find_element_by_css_selector("span#page_count").text.strip())
-        while True:
-            list_issue = browser.find_elements_by_css_selector("div#bodyPanel > table:nth-child(1) > tbody > tr")
-            length = len(list_issue)
-            for count_line in range(1, length + 1):
-                sn_link = browser.find_element_by_css_selector("div#bodyPanel > table:nth-child(1) > tbody > tr:nth-child(%d) > td:nth-child(2) > div" % count_line)
-                sn = sn_link.text.strip()
-                link_title = browser.find_element_by_xpath('//div[@id="bodyPanel"]/table[1]/tbody/tr[%d]//td[4]/div/span/a' % count_line)
-                create_date_temp = browser.find_element_by_css_selector("div#bodyPanel > table:nth-child(1) > tbody > tr:nth-child(%d) > td:nth-child(10) > div" % count_line).text.strip().split(" ")[0].split("-")
-                create_date = "/".join(create_date_temp)
-                issue_type = browser.find_element_by_css_selector("div#bodyPanel > table:nth-child(1) > tbody > tr:nth-child(%d) > td:nth-child(3) > div" % count_line).text.strip()
-                title = link_title.text.strip()
-                ActionChains(browser).move_to_element(sn_link).double_click().perform()
-                time.sleep(1)
-                browser.switch_to.parent_frame()
-                browser.switch_to.frame('workflowFrame')
-                ActionChains(browser).move_to_element(browser.find_element_by_css_selector("div#tabPane > div > ul > li:nth-child(4) > div")).perform()
-                browser.find_element_by_css_selector("div#tabPane > div > ul > li:nth-child(4) > div").click()
-                time.sleep(0.5)
-                browser.switch_to.frame('tabs_panel_3')
-                browser.switch_to.frame('viewFrame')
-                list_status = browser.find_elements_by_css_selector("table#procTab > tbody > tr")
-                length_status = len(list_status)
-                for count_status in range(2, length_status):
-                    status = browser.find_element_by_css_selector("table#procTab > tbody > tr:nth-child(%d) > td:nth-child(2) > div" % count_status).text.strip()
-                    operation = browser.find_element_by_css_selector("table#procTab > tbody > tr:nth-child(%d) > td:nth-child(3) > div" % count_status).text.strip()
-                    operation_date_temp = browser.find_element_by_css_selector("table#procTab > tbody > tr:nth-child(%d) > td:nth-child(5) > div" % count_status).text.strip().split(" ")[0].split("-")
-                    operation_date = "/".join(operation_date_temp)
-                    operation_people = browser.find_element_by_css_selector("table#procTab > tbody > tr:nth-child(%d) > td:nth-child(4) > div" % count_status).text.strip()
-                    if status == 'Verify' and operation == '驳回'.decode('gbk'):
-                        list_sn.append(sn)
-                        self.updatedisplay(sn)
-                        list_issue_type.append(issue_type)
-                        list_title.append(title)
-                        list_operation_people.append(operation_people)
-                        list_create_date.append(create_date)
-                        list_verify_date.append(operation_date)
-                        break
-                browser.switch_to.parent_frame()
-                browser.switch_to.parent_frame()
-                ActionChains(browser).move_to_element(browser.find_element_by_css_selector("a#returnLink")).perform()
-                browser.find_element_by_css_selector("a#returnLink").click()
-                time.sleep(0.5)
-                browser.switch_to.default_content()
-                WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
-                browser.switch_to.frame('mainFrame')
-                WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#entityTab_')))
-                browser.switch_to.frame('entityTab_')
-                WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_8')))
-                browser.switch_to.frame('tabs_panel_8')
-            browser.switch_to.default_content()
-            WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#mainFrame')))
-            browser.switch_to.frame('mainFrame')
-            WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#entityTab_')))
-            browser.switch_to.frame('entityTab_')
-            WebDriverWait(browser, 10).until(ec.presence_of_element_located((By.CSS_SELECTOR, 'iframe#tabs_panel_8')))
-            browser.switch_to.frame('tabs_panel_8')
-            current_page_temp = browser.find_element_by_css_selector("#targetPage").get_attribute("Value")
-            current_page = int(current_page_temp)
-            self.updatedisplay(("完成{current_page_sub}/{total_page_sub}页信息抓取".format(current_page_sub=current_page, total_page_sub=total_pages)).decode('gbk'))
-            if current_page == total_pages:
-                browser.quit()
-                break
+        #check code(login to)
+        url_checkcode = "http://10.7.13.21:2000/j_security_check"
+        headers_checkcode = {
+            'accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'Cache-Control': "max-age=0",
+            'Connection': "keep-alive",
+            'Content-Type': "application/x-www-form-urlencoded",
+            'Host': "10.7.13.21:2000",
+            'Origin': "http://10.7.13.21:2000",
+            'Referer': "http://10.7.13.21:2000/",
+            'Upgrade-Insecure-Requests': "1",
+            'User-Agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
+        }
+        payload_checkcode = "isExpires=1&sessionIndex=&j_username={username_value}&j_password={password_value}&j_validatecode=&remember=on&BROWSER_VERSION=1&REMOTE_LANGUAGE=undefined".format(username_value=username, password_value=password)
+        checkcode = get_data.post(url_checkcode, data=payload_checkcode, headers=headers_checkcode)
+        #get post data for list projects
+        url_page_list_data = "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf"
+        querystring = {"type": "PJT"}
+        headers = {
+            'accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'connection': "keep-alive",
+            'content-type': "application/x-www-form-urlencoded; charset=UTF-8",
+            'origin': "http://10.7.13.21:2000",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'host': "10.7.13.21:2000",
+            'referer': "http://10.7.13.21:2000/main.do",
+            'upgrade-insecure-requests': "1",
+            'cache-control': "no-cache"
+        }
+        page_content = get_data.get(url_page_list_data, headers=headers, params=querystring).text
+        data_to_filter = BeautifulSoup(page_content, "html.parser")
+        viewid = data_to_filter.select('li[issystem="Y"]')[0].attrs['val']
+        #print data_to_filter
+        javax_faces_ViewState_temp = data_to_filter.select('input[id="javax.faces.ViewState"]')[0].attrs['value']
+        javax_faces_ViewState=urllib2.quote(javax_faces_ViewState_temp)
+        cate = data_to_filter.select('input[name="cate"]')[0].attrs['value']
+
+        #get project info
+        url_list_project = "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf"
+        headers_list_project = {
+            'accept': "*/*",
+            'accept-encoding': "gzip, deflate",
+            'accept-language': "zh-CN,zh;q=0.9",
+            'connection': "keep-alive",
+            'content-type': "application/x-www-form-urlencoded",
+            'origin': "http://10.7.13.21:2000",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'host': "10.7.13.21:2000",
+            'referer': "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf?type=PJT",
+            'Cache-Control': "no-cache"
+        }
+        payload_list_project = "AJAXREQUEST=j_id_jsp_1770895026_0&operate=operate&module=PJT&hideNodes=&toggleNode=&hideAll=1&cate={catevalue}&viewId={viewidvalue}&targetPage=1&orderBy=&orderByType=&headCondition=&filterIds=&operate%3A_fileInfo=&javax.faces.ViewState={javavalue}&operate%3AreflushAll=operate%3AreflushAll".format(catevalue=cate, viewidvalue=viewid, javavalue=javax_faces_ViewState)
+        data_list_project_temp = get_data.post(url_list_project, data=payload_list_project, headers=headers_list_project).text
+        data_list_project = BeautifulSoup(data_list_project_temp, "html.parser")
+        data_list_project_after_filter = data_list_project.select('span[id="_ajax:data"]')[0].text
+        name_project = re.findall(r'\\"Name\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
+        belongid_project_list = re.findall(r'\\"ID\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
+        name_project_list = [item.decode('unicode_escape') for item in name_project]
+        belongid = belongid_project_list[name_project_list.index(project_name_selected)]
+
+        #get bug list for one project
+        #preparetion for buglist
+        url_buglist = "http://10.7.13.21:2000/pages/entity/belongList.jsf"
+        querystring_buglist_pre = {"belongId":"{belongid_value}".format(belongid_value=belongid),"belongType":"PJT","type":"ISU"}
+        headers_buglist_pre = {
+            'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            'Accept-Encoding': "gzip, deflate",
+            'Accept-Language': "zh-CN,zh;q=0.9",
+            'Connection': "keep-alive",
+            'Host': "10.7.13.21:2000",
+            'Referer': "http://10.7.13.21:2000/pages/lifecycle/entity/entityTab.project.jsf?objectId={belongid_value}&lcType=PJT&r=0.6253874309481038".format(belongid_value=belongid),
+            'Upgrade-Insecure-Requests': "1",
+            'User-Agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'Cache-Control': "no-cache"
+        }
+        data_buglist_pre_temp = get_data.get(url_buglist, headers=headers_buglist_pre, params=querystring_buglist_pre).text
+        data_buglist_pre = BeautifulSoup(data_buglist_pre_temp, "html.parser")
+        viewid_buglist = data_buglist_pre.select('input[id="viewId"]')[0].attrs["value"]
+        viewstate_buglist = urllib2.quote(data_buglist_pre.select('input[id="javax.faces.ViewState"]')[0].attrs["value"])
+
+        #get total pages
+        headers_buglist = {
+            'Content-Type':"application/x-www-form-urlencoded; charset=UTF-8",
+            'Accept':"*/*",
+            'Accept-Encoding':"gzip, deflate",
+            'Accept-Language':"zh-CN,zh;q=0.9",
+            'Connection':"keep-alive",
+            'Host':"10.7.13.21:2000",
+            'Origin':"http://10.7.13.21:2000",
+            'Cache-Control': "no-cache",
+            'User-Agent':"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'Referer':"http://10.7.13.21:2000/pages/entity/belongList.jsf?belongId={belongid_value}&belongType=PJT&type=ISU".format(belongid_value=belongid)
+        }
+        payload_buglist_pageone = "AJAXREQUEST=j_id_jsp_135821430_0&operate=operate&module=ISU&hideNodes=&toggleNode=&hideAll=1&cate=4&viewId={viewid_value}&targetPage=1&orderBy=&orderByType=&belongId={belongid_value}&belongType=PJT&headCondition=&filterIds=&operate%3A_fileInfo=&javax.faces.ViewState={viewstate_value}&operate%3AreflushAll=operate%3AreflushAll".format(viewid_value=viewid_buglist, belongid_value=belongid, viewstate_value=viewstate_buglist)
+        buglist_page_one = BeautifulSoup(get_data.post(url_buglist, data=payload_buglist_pageone, headers=headers_buglist).text, "html.parser")
+        total_pages =  buglist_page_one.select('span[id="page_count"]')[0].text
+        total_pages_count = int(total_pages) +1
+
+        bug_name_list_total_temp = []
+        bug_id_list_total_temp = []
+        bug_status_list_total_temp = []
+        #get detail for all bugs
+        for count in range(1, total_pages_count):
+            payload_buglist = "AJAXREQUEST=j_id_jsp_135821430_0&operate=operate&module=ISU&hideNodes=&toggleNode=&hideAll=1&cate=4&viewId={viewid_value}&targetPage={page_value}&orderBy=&orderByType=&belongId={belongid_value}&belongType=PJT&headCondition=&filterIds=&operate%3A_fileInfo=&javax.faces.ViewState={viewstate_value}&operate%3AreflushAll=operate%3AreflushAll".format(viewid_value=viewid_buglist, belongid_value=belongid, viewstate_value=viewstate_buglist, page_value=count)
+            buglist_for_one_page_temp = BeautifulSoup(get_data.post(url_buglist, data=payload_buglist, headers=headers_buglist).text, "html.parser")
+            buglist_for_one_page = buglist_for_one_page_temp.select('span[id="_ajax:data"]')[0].text
+            bug_name_temp = re.findall(r'\\"Name\\":{\\"v\\":\\"(.*?)\\",', buglist_for_one_page)#[Apollo PVT\x5D[CMC 3.0.0\x5D\u901A\u8FC7IPMI\u547D\u4EE4\u5E26\u5916\u8BBE\u7F6ECMC\u7F51\u7EDC\u9759\u6001IP\uFF0C\u547D\u4EE4\u62A5\u9519\u4F46IP\u53EF\u4EE5\u767B\u5F55CMC
+            bug_name = [item.decode('unicode_escape') for item in bug_name_temp]
+            bug_status = re.findall(r'\\"StatusID\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"',buglist_for_one_page)#Verify
+            bug_id = re.findall(r'\\"ID\\":{\\"v\\":\\"(.*?)\\",', buglist_for_one_page)#99547a7e-7130-4821-a087-e71b01f0f05e
+
+            bug_name_list_total_temp.extend(bug_name)
+            bug_status_list_total_temp.extend(bug_status)
+            bug_id_list_total_temp.extend(bug_id)
+        # print len(bug_name_list_total)
+        # print len(bug_creatime_list_total)
+        # print len(bug_management_sn_list_total)
+        # print len(bug_category_list_total)
+        # print len(bug_status_list_total)
+        # print len(bug_id_list_total)
+        #去除掉总体状态不正确，导致不显示的；
+        bug_name_list_total = []
+        bug_id_list_total = []
+        bug_status_list_total = []
+        for index_statusid, item_statusid in enumerate(bug_status_list_total_temp):
+            if len(item_statusid) != 0:
+                bug_name_list_total.append(bug_name_list_total_temp[index_statusid])
+                bug_id_list_total.append(bug_id_list_total_temp[index_statusid])
+                bug_status_list_total.append(item_statusid)
+
+
+        url_bug_first_page = []
+        bug_creatime_list_total = []
+        bug_management_sn_list_total = []
+
+        #get link address for  every bug
+        for index_bug_id, item_bug_id in enumerate(bug_id_list_total):
+            url_bug_detail = "http://10.7.13.21:2000/pages/workflow/entityTab.jsf"
+            querystring_bug_detail = {"workflowType":"ISU","objectId":"{bugid_value}".format(bugid_value=item_bug_id)}
+            data_bug_detail = BeautifulSoup(get_data.get(url_bug_detail, params=querystring_bug_detail).text, "html.parser")
+            url_bug_first_page_temp = data_bug_detail.select('div[id="tabPane"] > ul:nth-of-type(1) > li:nth-of-type(1)')[0].attrs["url"]
+            url_bug_first_page.append("http://10.7.13.21:2000" + url_bug_first_page_temp)
+        for index_bug_first_page, item_bug_first_page in enumerate(url_bug_first_page):
+            # print bug_status_list_total[index_bug_first_page]
+            bug_detail_first_page = BeautifulSoup(get_data.get(item_bug_first_page).text, "html.parser")
+            #print bug_detail_first_page
+            data_detail_first_page_temp = bug_detail_first_page.select('input[id="data"]')[0].attrs["value"]
+            #print data_detail_first_page_temp
+            management_sn = re.findall(',"b":"编号","v":"(.*?)",'.decode('gbk'), data_detail_first_page_temp)[0]
+            #创建时间优先从页面元素获取。如果不存在（BUG已关闭），再使用下方的评论时间。
+            createtime_temp = re.findall(',"b":"提出日期","v":"(.*?)",'.decode('gbk'), data_detail_first_page_temp)
+            if len(createtime_temp) == 0 :
+                createtime = bug_detail_first_page.select('#noteDiv > div.notes > div.title')[-1].text.strip().split(",")[-1].strip().split(" ")[0].strip()
             else:
-                browser.find_element_by_css_selector("#pagination_nextPage > img").click()
-                time.sleep(1)
-        self.button_go.Enable()
-        self.updatedisplay(("结束抓取信息，开始时间{time_end}".format(time_end=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))).decode('gbk'))
+                #print createtime_temp
+                createtime = createtime_temp[0]
+            bug_management_sn_list_total.append(management_sn)
+            bug_creatime_list_total.append(createtime)
 
-        dlg_info = wx.MessageDialog(None, 'BUG一次解决率信息已经抓取完毕'.decode('gbk'), '完成提示'.decode('gbk'), wx.OK | wx.ICON_INFORMATION | wx.STAY_ON_TOP)
-        dlg_info.ShowModal()
 
-        title_sheet = ['编号'.decode('gbk'), '所属类别'.decode('gbk'), '标题'.decode('gbk'),  '驳回人'.decode('gbk'),'创建时间'.decode('gbk'), '提交方案驳回时间'.decode('gbk')]
+        bug_name_list = []
+        bug_creatime_list = []
+        bug_operation_time_list= []
+        bug_status_list = []
+        bug_management_sn_list = []
+        bug_username_operation_list = []
+        url_operation_list = []
+        #获取记录BUG操作过程的页面链接
+        for index_bug_id, item_bug_id in enumerate(bug_id_list_total):
+            url_bug_detail = "http://10.7.13.21:2000/pages/workflow/workflowChartByObject.jsf"
+            querystring_bug_detail = {"workflowType":"ISU","objectId":"{bugid_value}".format(bugid_value=item_bug_id)}
+            bug_detail = BeautifulSoup(get_data.get(url_bug_detail, params=querystring_bug_detail).text, "html.parser")
+            url_operation_temp = bug_detail.select('iframe[id="viewFrame"]')[0].attrs['src']
+            url_operation  = "http://10.7.13.21:2000" + url_operation_temp.replace("../../","/")
+            url_operation_list.append(url_operation)
+
+        #根据上一步的连接获取BUG操作记录
+        for index_operation, item_operation in enumerate(url_operation_list):
+            #print os.linesep
+            data_operation_page = BeautifulSoup(get_data.get(item_operation).text, "html.parser")
+            #print data_operation_page
+            status_operation_list_temp = data_operation_page.select('table[id="procTab"] > tr > td:nth-of-type(2) > div')
+            name_operation_list_temp = data_operation_page.select('table[id="procTab"] > tr > td:nth-of-type(3) > div')
+            person_operation_list_temp = data_operation_page.select('table[id="procTab"] > tr > td:nth-of-type(4) > div')
+            time_operation_list_temp = data_operation_page.select('table[id="procTab"] > tr > td:nth-of-type(5) > div')
+            for index_operation_status, item_operation_status in enumerate(status_operation_list_temp):
+                # print item_operation_status.text.strip()
+                # time.sleep(1)
+                if item_operation_status.text.strip() == "Verify" and name_operation_list_temp[index_operation_status].text.strip() == "驳回".decode('gbk'):
+                    bug_username_operation_list.append(person_operation_list_temp[index_operation_status].text.strip())
+                    bug_operation_time_list.append(time_operation_list_temp[index_operation_status].text.strip().split(" ")[0].strip())
+                    bug_name_list.append(bug_name_list_total[index_operation])
+                    bug_creatime_list.append(bug_creatime_list_total[index_operation])
+                    bug_status_list.append(bug_status_list_total[index_operation])
+                    bug_management_sn_list.append(bug_management_sn_list_total[index_operation])
+                    break
+
+
+        # print len(bug_name_list)
+        # print len(bug_creatime_list)
+        # print len(bug_status_list)
+        # print len(bug_management_sn_list)
+        # print len(bug_operation_time_list)
+        # print len(bug_username_operation_list)
+
+        #write to log file
+        title_sheet = ['编号'.decode('gbk'), '标题'.decode('gbk'), '当前状态'.decode('gbk'), '驳回人'.decode('gbk'),'BUG创建时间'.decode('gbk'), '提交方案驳回时间'.decode('gbk')]
         timestamp = time.strftime('%Y%m%d', time.localtime())
         workbook_display = xlsxwriter.Workbook('%s_BUG一次解决率统计-%s.xlsx'.decode('gbk') % (project_name_selected, timestamp))
         sheet = workbook_display.add_worksheet('BUG一次解决率统计'.decode('gbk'))
@@ -344,26 +525,23 @@ class BugSolutionMoreThanOnce(wx.Frame):
         formattitle.set_align('center')
         formattitle.set_bg_color("yellow")
         formattitle.set_bold(True)
-        sheet.merge_range(0, 0, 0, 4, "%s_BUG一次解决率统计".decode('gbk') % project_name_selected, formattitle)
-        sheet.set_column('A:B', 17)
-        sheet.set_column('C:C', 65)
-        sheet.set_column('D:D', 15)
+        sheet.merge_range(0, 0, 0, 5, "%s_BUG一次解决率统计".decode('gbk') % project_name_selected, formattitle)
+        sheet.set_column('A:A', 17)
+        sheet.set_column('B:B', 65)
+        sheet.set_column('C:C', 15)
         sheet.set_column('E:F', 18)
         for index_title, item_title in enumerate(title_sheet):
             sheet.write(1, index_title, item_title, formatone)
-        for index_data, item_data in enumerate(list_sn):
+        for index_data, item_data in enumerate(bug_management_sn_list):
             sheet.write(2 + index_data, 0, item_data, formatone)
-            sheet.write(2 + index_data, 1, list_issue_type[index_data], formatone)
-            sheet.write(2 + index_data, 2, list_title[index_data], formatone)
-            sheet.write(2 + index_data, 3, list_operation_people[index_data], formatone)
-            sheet.write_datetime(2 + index_data, 4, datetime.datetime.strptime(list_create_date[index_data], '%Y/%m/%d'), workbook_display.add_format({'num_format': 'yyyy-mm-dd', 'border': 1}))
-            sheet.write_datetime(2 + index_data, 5, datetime.datetime.strptime(list_verify_date[index_data], '%Y/%m/%d'), workbook_display.add_format({'num_format': 'yyyy-mm-dd', 'border': 1}))
+            sheet.write(2 + index_data, 1, bug_name_list[index_data], formatone)
+            sheet.write(2 + index_data, 2, bug_status_list[index_data].decode('unicode_escape'), formatone)
+            sheet.write(2 + index_data, 3, bug_username_operation_list[index_data], formatone)
+            sheet.write_datetime(2 + index_data, 4, datetime.datetime.strptime(bug_creatime_list[index_data], '%Y-%m-%d'), workbook_display.add_format({'num_format': 'yyyy-mm-dd', 'border': 1}))
+            sheet.write_datetime(2 + index_data, 5, datetime.datetime.strptime(bug_operation_time_list[index_data], '%Y-%m-%d'), workbook_display.add_format({'num_format': 'yyyy-mm-dd', 'border': 1}))
         workbook_display.close()
-
-    def updatedisplay(self, msg):
-        t = msg
-        self.output_info.AppendText("%s".decode('gbk') % t)
-        self.output_info.AppendText(os.linesep)
+        self.button_go.Enable()
+        self.updatedisplay(("结束抓取信息，结束时间{time_end}".format(time_end=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))).decode('gbk'))
 
 
 if __name__ == '__main__':
