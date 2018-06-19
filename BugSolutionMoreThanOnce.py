@@ -12,7 +12,6 @@ import datetime
 from threading import Thread
 import wx
 import urllib2
-
 import base64
 import HTMLParser
 
