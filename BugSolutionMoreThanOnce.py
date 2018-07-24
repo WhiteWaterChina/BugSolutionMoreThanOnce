@@ -425,7 +425,8 @@ class BugSolutionMoreThanOnce(wx.Frame):
             bug_name_temp = re.findall(r'\\"Name\\":{\\"v\\":\\"(.*?)\\",', buglist_for_one_page)#[Apollo PVT\x5D[CMC 3.0.0\x5D\u901A\u8FC7IPMI\u547D\u4EE4\u5E26\u5916\u8BBE\u7F6ECMC\u7F51\u7EDC\u9759\u6001IP\uFF0C\u547D\u4EE4\u62A5\u9519\u4F46IP\u53EF\u4EE5\u767B\u5F55CMC
             bug_name = [item.decode('unicode_escape') for item in bug_name_temp]
             # bug当前的状态
-            bug_status = re.findall(r'\\"StatusID\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"',buglist_for_one_page)#Verify
+            bug_status_temp = re.findall(r'\\"StatusID\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"',buglist_for_one_page)#Verify
+            bug_status = [item.decode('unicode_escape') for item in bug_status_temp]
             # bug的id编号
             bug_id = re.findall(r'\\"ID\\":{\\"v\\":\\"(.*?)\\",', buglist_for_one_page)#99547a7e-7130-4821-a087-e71b01f0f05e
             # bug的类别，如HW，BMC，BIOS
@@ -522,9 +523,6 @@ class BugSolutionMoreThanOnce(wx.Frame):
             bug_description_list_total.append(bug_description)
             bug_solution_list_total.append(bug_solution)
             bug_rootcause_list_total.append(bug_rootcause)
-
-
-
 
         bug_operation_time_list= []
         bug_refused_or_not = []
