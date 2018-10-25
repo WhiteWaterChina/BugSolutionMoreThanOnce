@@ -592,18 +592,15 @@ class BugSolutionMoreThanOnce(wx.Frame):
                 if temp_1 != "评论".decode('gbk'):
                     data_detail_operation_list_temp_temp.append(item_operation_temp_temp)
             # 获取驳回时的评论信息
-            try:
-                for index_operation_temp, item_operation_temp in enumerate(data_detail_operation_list_temp_temp):
-                    temp_1 = item_operation_temp.text.strip()
-                    temp_2 = item_operation_temp.find_parent("div").text.split(",")[-1].strip()
-                    if temp_2 in bug_operation_date_list[index_bug_id] and temp_1 in operation_status_list:
-                        data_temp = item_operation_temp.find_parent("div").find_next_sibling("div").text.strip()
-                        if data_temp is not None and len(data_temp) != 0:
-                            detail_refuse_data_list.append(data_temp)
-                            print(data_temp)
-                            print("#############")
-            except IndexError:
-                pass
+            for index_operation_temp, item_operation_temp in enumerate(data_detail_operation_list_temp_temp):
+                temp_1 = item_operation_temp.text.strip()
+                temp_2 = item_operation_temp.find_parent("div").text.split(",")[-1].strip()
+                if temp_2 in bug_operation_date_list[index_bug_id] and temp_1 in operation_status_list:
+                    data_temp = item_operation_temp.find_parent("div").find_next_sibling("div").text.strip()
+                    if data_temp is not None and len(data_temp) != 0:
+                        detail_refuse_data_list.append(data_temp)
+                        print(data_temp)
+                        print("#############")
             bug_refuse_reason_list.append(";".join(detail_refuse_data_list))
 
         # write to log file
