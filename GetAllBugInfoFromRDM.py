@@ -11,9 +11,8 @@ import time
 import datetime
 from threading import Thread
 import wx
-import urllib2
+import  urllib.parse
 import base64
-import HTMLParser
 
 
 class BugSolutionMoreThanOnce(wx.Frame):
@@ -135,8 +134,6 @@ class BugSolutionMoreThanOnce(wx.Frame):
         self.button_go.Bind(wx.EVT_BUTTON, self.get_data_all)
         self.button_close.Bind(wx.EVT_BUTTON, self.windows_close)
 
-        self._thread = Thread(target=self.run, args=())
-        self._thread.daemon = True
 
     def __del__(self):
         pass
@@ -146,22 +143,23 @@ class BugSolutionMoreThanOnce(wx.Frame):
     def windows_close(self, event):
         self.Close()
 
+    def newthread(self):
+        Thread(target=self.run_all).start()
+
     def get_data_all(self, event):
-        self._thread.start()
-        self.started = True
-        self.button_go = event.GetEventObject()
+        self.newthread()
         self.button_go.Disable()
 
     def updatedisplay(self, msg):
         t = msg
-        self.output_info.AppendText("%s".decode('gbk') % t)
+        self.output_info.AppendText("{}".format(t))
         self.output_info.AppendText(os.linesep)
 
     def get_project_list(self, event):
         username = self.input_username.GetValue().strip()
         password_input = self.input_password.GetValue().strip()
         # parser = HTMLParser.HTMLParser()
-        password = base64.b64encode(password_input)
+        password = base64.b64encode(password_input.encode()).decode()
         # use engine to  get cookie
         url_getsession = "http://10.7.13.21:2000/scripts/base64.js?V=V808R08M02sp06"
         get_data = requests.session()
@@ -215,24 +213,23 @@ class BugSolutionMoreThanOnce(wx.Frame):
         url_page_list_data = "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf"
         querystring = {"type": "PJT"}
         headers = {
-            'accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            'accept': "*/*",
             'accept-encoding': "gzip, deflate",
             'accept-language': "zh-CN,zh;q=0.9",
             'connection': "keep-alive",
             'content-type': "application/x-www-form-urlencoded; charset=UTF-8",
             'origin': "http://10.7.13.21:2000",
-            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
             'host': "10.7.13.21:2000",
-            'referer': "http://10.7.13.21:2000/main.do",
-            'upgrade-insecure-requests': "1",
-            'cache-control': "no-cache"
+            'referer': "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf?type=PJT",
         }
         page_content = get_data.get(url_page_list_data, headers=headers, params=querystring).text
         data_to_filter = BeautifulSoup(page_content, "html.parser")
         viewid = data_to_filter.select('li[issystem="Y"]')[0].attrs['val']
         # print data_to_filter
         javax_faces_ViewState_temp = data_to_filter.select('input[id="javax.faces.ViewState"]')[0].attrs['value']
-        javax_faces_ViewState = urllib2.quote(javax_faces_ViewState_temp)
+        javax_faces_ViewState = urllib.parse.quote(javax_faces_ViewState_temp)
+
         cate = data_to_filter.select('input[name="cate"]')[0].attrs['value']
 
         # get project info
@@ -242,14 +239,14 @@ class BugSolutionMoreThanOnce(wx.Frame):
             'accept-encoding': "gzip, deflate",
             'accept-language': "zh-CN,zh;q=0.9",
             'connection': "keep-alive",
-            'content-type': "application/x-www-form-urlencoded",
+            'content-type': "application/x-www-form-urlencoded; charset=UTF-8",
             'origin': "http://10.7.13.21:2000",
-            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
             'host': "10.7.13.21:2000",
             'referer': "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf?type=PJT",
-            'Cache-Control': "no-cache"
+            'Content-Length': '9782',
         }
-        payload_list_project = "AJAXREQUEST=j_id_jsp_1770895026_0&operate=operate&module=PJT&hideNodes=&toggleNode=&hideAll=1&cate={catevalue}&viewId={viewidvalue}&targetPage=1&orderBy=&orderByType=&headCondition=&filterIds=&operate%3A_fileInfo=&javax.faces.ViewState={javavalue}&operate%3AreflushAll=operate%3AreflushAll".format(
+        payload_list_project = "AJAXREQUEST=j_id_jsp_1770895026_0&operate=operate&module=PJT&hideNodes=&toggleNode=&hideAll=1&cate={catevalue}&viewId={viewidvalue}&targetPage=1&orderBy=&orderByType=&headCondition=&filterIds=&operate%3A_fileInfo=&javax.faces.ViewState={javavalue}&operate%3AreflushAll=operate%3AreflushAll&".format(
             catevalue=cate, viewidvalue=viewid, javavalue=javax_faces_ViewState)
         data_list_project_temp = get_data.post(url_list_project, data=payload_list_project,
                                                headers=headers_list_project).text
@@ -257,18 +254,18 @@ class BugSolutionMoreThanOnce(wx.Frame):
         data_list_project_after_filter = data_list_project.select('span[id="_ajax:data"]')[0].text
         name_project = re.findall(r'\\"Name\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
         # belongid_project_list = re.findall(r'\\"ID\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
-        name_project_list = [item.decode('unicode_escape') for item in name_project]
+        name_project_list = [item.encode("gbk").decode("unicode_escape") for item in name_project]
         self.combox_project_list.Set(name_project_list)
-        dlg_info = wx.MessageDialog(None, '项目列表已经获取完毕！'.decode('gbk'), '完成提示'.decode('gbk'), wx.OK | wx.ICON_INFORMATION | wx.STAY_ON_TOP)
+        dlg_info = wx.MessageDialog(None, '项目列表已经获取完毕！', '完成提示', wx.OK | wx.ICON_INFORMATION | wx.STAY_ON_TOP)
         dlg_info.ShowModal()
 
-    def run(self):
-        self.updatedisplay(("开始抓取信息，开始时间{time_start}".format(time_start=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))).decode('gbk'))
-        project_name_selected = unicode(self.combox_project_list.GetValue())
+    def run_all(self):
+        self.updatedisplay(("开始抓取信息，开始时间{time_start}".format(time_start=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))))
+        project_name_selected = self.combox_project_list.GetValue()
         username = self.input_username.GetValue().strip()
         password_input = self.input_password.GetValue().strip()
         # parser = HTMLParser.HTMLParser()
-        password = base64.b64encode(password_input)
+        password = base64.b64encode(password_input.encode()).decode()
         # use engine to  get cookie
         url_getsession = "http://10.7.13.21:2000/scripts/base64.js?V=V808R08M02sp06"
         get_data = requests.session()
@@ -315,34 +312,33 @@ class BugSolutionMoreThanOnce(wx.Frame):
             'Upgrade-Insecure-Requests': "1",
             'User-Agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
         }
-        payload_checkcode = "isExpires=1&sessionIndex=&j_username={username_value}&j_password={password_value}&j_validatecode=&remember=on&BROWSER_VERSION=1&REMOTE_LANGUAGE=undefined".format(username_value=username, password_value=password)
+        payload_checkcode = "isExpires=1&sessionIndex=&j_username={username_value}&j_password={password_value}&j_validatecode=&remember=on&BROWSER_VERSION=1&REMOTE_LANGUAGE=undefined".format(
+            username_value=username, password_value=password)
         get_data.post(url_checkcode, data=payload_checkcode, headers=headers_checkcode)
         # get post data for list projects
         url_page_list_data = "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf"
         querystring = {"type": "PJT"}
         headers = {
-            'accept': "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            'accept': "*/*",
             'accept-encoding': "gzip, deflate",
             'accept-language': "zh-CN,zh;q=0.9",
             'connection': "keep-alive",
             'content-type': "application/x-www-form-urlencoded; charset=UTF-8",
             'origin': "http://10.7.13.21:2000",
-            'user-agent': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36",
+            'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
             'host': "10.7.13.21:2000",
-            'referer': "http://10.7.13.21:2000/main.do",
-            'upgrade-insecure-requests': "1",
-            'cache-control': "no-cache"
+            'referer': "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf?type=PJT",
         }
         page_content = get_data.get(url_page_list_data, headers=headers, params=querystring).text
         data_to_filter = BeautifulSoup(page_content, "html.parser")
         viewid = data_to_filter.select('li[issystem="Y"]')[0].attrs['val']
         # print data_to_filter
         javax_faces_ViewState_temp = data_to_filter.select('input[id="javax.faces.ViewState"]')[0].attrs['value']
-        javax_faces_ViewState = urllib2.quote(javax_faces_ViewState_temp)
+        javax_faces_ViewState = urllib.parse.quote(javax_faces_ViewState_temp)
         cate = data_to_filter.select('input[name="cate"]')[0].attrs['value']
 
         # get project info
-        self.updatedisplay("开始获取所有项目信息".decode('gbk'))
+        self.updatedisplay("开始获取所有项目信息")
         url_list_project = "http://10.7.13.21:2000/pages/lifecycle/entity/list.jsf"
         headers_list_project = {
             'accept': "*/*",
@@ -362,7 +358,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         data_list_project_after_filter = data_list_project.select('span[id="_ajax:data"]')[0].text
         name_project = re.findall(r'\\"Name\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
         belongid_project_list = re.findall(r'\\"ID\\":{\\"v\\":\\"(.*?)\\",', data_list_project_after_filter)
-        name_project_list = [item.decode('unicode_escape') for item in name_project]
+        name_project_list = [item.encode("gbk").decode("unicode_escape") for item in name_project]
         belongid = belongid_project_list[name_project_list.index(project_name_selected)]
 
         # get bug list for one project
@@ -383,10 +379,10 @@ class BugSolutionMoreThanOnce(wx.Frame):
         data_buglist_pre_temp = get_data.get(url_buglist, headers=headers_buglist_pre, params=querystring_buglist_pre).text
         data_buglist_pre = BeautifulSoup(data_buglist_pre_temp, "html.parser")
         viewid_buglist = data_buglist_pre.select('input[id="viewId"]')[0].attrs["value"]
-        viewstate_buglist = urllib2.quote(data_buglist_pre.select('input[id="javax.faces.ViewState"]')[0].attrs["value"])
+        viewstate_buglist = urllib.parse.quote(data_buglist_pre.select('input[id="javax.faces.ViewState"]')[0].attrs["value"])
 
         # get total pages
-        self.updatedisplay("开始获取所有BUG的总页数".decode('gbk'))
+        self.updatedisplay("开始获取所有BUG的总页数")
         headers_buglist = {
             'Content-Type': "application/x-www-form-urlencoded; charset=UTF-8",
             'Accept': "*/*",
@@ -403,7 +399,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         buglist_page_one = BeautifulSoup(get_data.post(url_buglist, data=payload_buglist_pageone, headers=headers_buglist).text, "html.parser")
         total_pages = buglist_page_one.select('span[id="page_count"]')[0].text
         total_pages_count = int(total_pages) + 1
-        self.updatedisplay("所有BUG的总页数为%s".decode('gbk') % str(total_pages_count))
+        self.updatedisplay("所有BUG的总页数为{}".format(total_pages_count))
 
         bug_name_list_total_temp = []
         bug_id_list_total_temp = []
@@ -415,34 +411,34 @@ class BugSolutionMoreThanOnce(wx.Frame):
         bug_person_commit_list_temp = []
 
         # 从最开始的汇总页面收集BUG的信息，包括BUG的名字、当前状态、id编号、类别、创建时间、最后修改时间、什么阶段的等
-        self.updatedisplay("开始分页获取所有BUG的总信息".decode('gbk'))
+        self.updatedisplay("开始分页获取所有BUG的总信息")
         for count in range(1, total_pages_count):
-            self.updatedisplay("获取第%s页的BUG".decode('gbk') % str(count))
+            self.updatedisplay("获取第{}页的BUG".format(count))
             payload_buglist = "AJAXREQUEST=j_id_jsp_135821430_0&operate=operate&module=ISU&hideNodes=&toggleNode=&hideAll=1&cate=4&viewId={viewid_value}&targetPage={page_value}&orderBy=&orderByType=&belongId={belongid_value}&belongType=PJT&headCondition=&filterIds=&operate%3A_fileInfo=&javax.faces.ViewState={viewstate_value}&operate%3AreflushAll=operate%3AreflushAll".format(viewid_value=viewid_buglist, belongid_value=belongid, viewstate_value=viewstate_buglist, page_value=count)
             buglist_for_one_page_temp = BeautifulSoup(get_data.post(url_buglist, data=payload_buglist, headers=headers_buglist).text, "html.parser")
             buglist_for_one_page = buglist_for_one_page_temp.select('span[id="_ajax:data"]')[0].text
             # print(buglist_for_one_page)
             # bug的名字
             bug_name_temp = re.findall(r'\\"Name\\":{\\"v\\":\\"(.*?)\\",', buglist_for_one_page)# [Apollo PVT\x5D[CMC 3.0.0\x5D\u901A\u8FC7IPMI\u547D\u4EE4\u5E26\u5916\u8BBE\u7F6ECMC\u7F51\u7EDC\u9759\u6001IP\uFF0C\u547D\u4EE4\u62A5\u9519\u4F46IP\u53EF\u4EE5\u767B\u5F55CMC
-            bug_name = [item.decode('unicode_escape') for item in bug_name_temp]
+            bug_name = [item.encode("gbk").decode('unicode_escape') for item in bug_name_temp]
             # bug提出人
             bug_person_commit_temp = re.findall(r'\\"CreatorID\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"},', buglist_for_one_page)
-            bug_person_commit = [item.decode('unicode_escape') for item in bug_person_commit_temp]
+            bug_person_commit = [item.encode('gbk').decode('unicode_escape') for item in bug_person_commit_temp]
             # bug当前的状态
             bug_status_temp = re.findall(r'\\"StatusID\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"}', buglist_for_one_page)# Verify
-            bug_status = [item.decode('unicode_escape') for item in bug_status_temp]
+            bug_status = [item.encode('gbk').decode('unicode_escape') for item in bug_status_temp]
             # bug的id编号
             bug_id = re.findall(r'\\"ID\\":{\\"v\\":\\"(.*?)\\",', buglist_for_one_page)# 99547a7e-7130-4821-a087-e71b01f0f05e
             # bug的类别，如HW，BMC，BIOS
             bug_type_temp = re.findall(r',\\"TypeID\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"', buglist_for_one_page)
-            bug_type = [item.decode('unicode_escape') for item in bug_type_temp]
+            bug_type = [item.encode('gbk').decode('unicode_escape') for item in bug_type_temp]
             # 创建时间
             bug_create_date = re.findall(r',\\"CreatedTime\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"},', buglist_for_one_page)
             # 最后修改时间
             bug_modify_date = re.findall(r':{\\"ModifyTime\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(\d+-\d+-\d+).*?\\"', buglist_for_one_page)
             # stage
             bug_stage_temp = re.findall(r',\\"Fld_S_00020\\":{\\"v\\":\\".*?\\",\\"t\\":\\"(.*?)\\"},', buglist_for_one_page)
-            bug_stage = [item.decode('unicode_escape') for item in bug_stage_temp]
+            bug_stage = [item.encode('gbk').decode('unicode_escape') for item in bug_stage_temp]
 
             bug_name_list_total_temp.extend(bug_name)
             bug_status_list_total_temp.extend(bug_status)
@@ -453,13 +449,13 @@ class BugSolutionMoreThanOnce(wx.Frame):
             bug_stage_list_total_temp.extend(bug_stage)
             bug_person_commit_list_temp.extend(bug_person_commit)
 
-        print len(bug_name_list_total_temp)
-        print len(bug_status_list_total_temp)
-        print len(bug_id_list_total_temp)
-        print len(bug_create_date_list_total_temp)
-        print len(bug_modify_date_list_total_temp)
-        print len(bug_stage_list_total_temp)
-        print len(bug_person_commit_list_temp)
+        print(len(bug_name_list_total_temp))
+        print(len(bug_status_list_total_temp))
+        print(len(bug_id_list_total_temp))
+        print(len(bug_create_date_list_total_temp))
+        print(len(bug_modify_date_list_total_temp))
+        print(len(bug_stage_list_total_temp))
+        print(len(bug_person_commit_list_temp))
 
         # 去除掉总体状态不正确，导致不显示的；
         bug_name_list_total = []
@@ -491,7 +487,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         bug_rootcause_list_total = []
 
         # get link address for  every bug
-        self.updatedisplay("开始获取所有BUG的链接信息".decode('gbk'))
+        self.updatedisplay("开始获取所有BUG的链接信息")
         for index_bug_id, item_bug_id in enumerate(bug_id_list_total):
             url_bug_detail = "http://10.7.13.21:2000/pages/workflow/entityTab.jsf"
             querystring_bug_detail = {"workflowType": "ISU", "objectId": "{bugid_value}".format(bugid_value=item_bug_id)}
@@ -499,24 +495,24 @@ class BugSolutionMoreThanOnce(wx.Frame):
             url_bug_first_page_temp = data_bug_detail.select('div[id="tabPane"] > ul:nth-of-type(1) > li:nth-of-type(1)')[0].attrs["url"]
             url_bug_first_page.append("http://10.7.13.21:2000" + url_bug_first_page_temp)
 
-        self.updatedisplay("开始获取所有BUG的首页信息".decode('gbk'))
+        self.updatedisplay("开始获取所有BUG的首页信息")
         for index_bug_first_page, item_bug_first_page in enumerate(url_bug_first_page):
             # print bug_status_list_total[index_bug_first_page]
             bug_detail_first_page = BeautifulSoup(get_data.get(item_bug_first_page).text, "html.parser")
             # print bug_detail_first_page
             data_detail_first_page_temp = bug_detail_first_page.select('input[id="data"]')[0].attrs["value"]
             # print data_detail_first_page_temp
-            management_sn = re.findall(',"b":"编号","v":"(.*?)",'.decode('gbk'), data_detail_first_page_temp)[0]
+            management_sn = re.findall(',"b":"编号","v":"(.*?)",', data_detail_first_page_temp)[0]
             try:
-                bug_description = re.findall(',"b":"问题描述","v":"(.*?)",'.decode('gbk'), data_detail_first_page_temp)[0]
+                bug_description = re.findall(',"b":"问题描述","v":"(.*?)",', data_detail_first_page_temp)[0]
             except IndexError:
                 bug_description = "None"
             try:
-                bug_solution = re.findall(',"b":"解决方案","v":"(.*?)",'.decode('gbk'), data_detail_first_page_temp)[0]
+                bug_solution = re.findall(',"b":"解决方案","v":"(.*?)",', data_detail_first_page_temp)[0]
             except IndexError:
                 bug_solution = "None"
             try:
-                bug_rootcause = re.findall(',"b":"Root cause 确认","v":"(.*?)",'.decode('gbk'), data_detail_first_page_temp)[0]
+                bug_rootcause = re.findall(',"b":"Root cause 确认","v":"(.*?)",', data_detail_first_page_temp)[0]
             except IndexError:
                 bug_rootcause = "None"
             # #创建时间优先从页面元素获取。如果不存在（BUG已关闭），再使用下方的评论时间。
@@ -538,7 +534,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         url_workflow_list = []
 
         # 获取记录BUG操作流程的页面链接，获取驳回的次数、驳回人列表、驳回的时间列表
-        self.updatedisplay("开始获取所有BUG的操作流程".decode('gbk'))
+        self.updatedisplay("开始获取所有BUG的操作流程")
         for index_bug_id, item_bug_id in enumerate(bug_id_list_total):
             url_bug_workflow = "http://10.7.13.21:2000/pages/workflow/workflowChartByObject.jsf"
             querystring_bug_workflow = {"workflowType": "ISU", "objectId": "{bugid_value}".format(bugid_value=item_bug_id)}
@@ -561,7 +557,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
             time_operation_list_temp = data_workflow_page.select('table[id="procTab"] > tr > td:nth-of-type(5) > div')
             for index_operation_status, item_operation_status in enumerate(status_operation_list_temp):
                 # 如果出现被驳回，则记录是否被驳回，然后记录驳回次数、驳回人列表、驳回时间列表；如果没有出现过被驳回，则驳回次数为0，其他两个列表都是空。
-                if item_operation_status.text.strip() == "Verify" and (name_operation_list_temp[index_operation_status].text.strip() == "驳回".decode('gbk') or name_operation_list_temp[index_operation_status].text.strip() == "验证不通过".decode('gbk') ):
+                if item_operation_status.text.strip() == "Verify" and (name_operation_list_temp[index_operation_status].text.strip() == "驳回" or name_operation_list_temp[index_operation_status].text.strip() == "验证不通过"):
                     bug_username_operation = person_operation_list_temp[index_operation_status].text.strip()
                     bug_operation_time_temp = time_operation_list_temp[index_operation_status].text.strip()
                     bug_operation_time = bug_operation_time_temp.split(" ")[0].strip()
@@ -577,8 +573,8 @@ class BugSolutionMoreThanOnce(wx.Frame):
 
         # 获取记录BUG操作记录的页面链接,来获取驳回的记录的原因
         bug_refuse_reason_list = []
-        operation_status_list = ["驳回".decode('gbk'), "验证不通过".decode('gbk')]
-        self.updatedisplay("开始获取所有BUG的操作记录".decode('gbk'))
+        operation_status_list = ["驳回", "验证不通过"]
+        self.updatedisplay("开始获取所有BUG的操作记录")
         for index_bug_id, item_bug_id in enumerate(bug_id_list_total):
             detail_refuse_data_list = []
             url_bug_operation = "http://10.7.13.21:2000/pages/workflow/operateRecordList.jsf"
@@ -589,7 +585,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
             # 排除评论的条目
             for item_operation_temp_temp in data_detail_operation_list_temp:
                 temp_1 = item_operation_temp_temp.text.strip()
-                if temp_1 != "评论".decode('gbk'):
+                if temp_1 != "评论":
                     data_detail_operation_list_temp_temp.append(item_operation_temp_temp)
             # 获取驳回时的评论信息
             for index_operation_temp, item_operation_temp in enumerate(data_detail_operation_list_temp_temp):
@@ -604,10 +600,10 @@ class BugSolutionMoreThanOnce(wx.Frame):
             bug_refuse_reason_list.append(";".join(detail_refuse_data_list))
 
         # write to log file
-        title_sheet = ['编号'.decode('gbk'), '类别'.decode('gbk'), '标题'.decode('gbk'), '当前状态'.decode('gbk'), 'BUG创建时间'.decode('gbk'), '提出人'.decode('gbk'), '最后更新时间'.decode('gbk'), '问题发现阶段'.decode('gbk'), '方案被驳回次数'.decode('gbk'), '驳回人列表'.decode('gbk'), '提交方案驳回时间列表'.decode('gbk'), '驳回原因列表'.decode('gbk'), '问题描述'.decode('gbk'), '解决方案'.decode('gbk'), 'Root Cause'.decode('gbk')]
+        title_sheet = ['编号', '类别', '标题', '当前状态', 'BUG创建时间', '提出人', '最后更新时间', '问题发现阶段', '方案被驳回次数', '驳回人列表', '提交方案驳回时间列表', '驳回原因列表', '问题描述', '解决方案', 'Root Cause']
         timestamp = time.strftime('%Y%m%d', time.localtime())
-        workbook_display = xlsxwriter.Workbook('%s_BUG统计-%s.xlsx'.decode('gbk') % (project_name_selected, timestamp))
-        sheet = workbook_display.add_worksheet('%s_BUG统计'.decode('gbk') % project_name_selected)
+        workbook_display = xlsxwriter.Workbook('{}_BUG统计-{}.xlsx'.format(project_name_selected, timestamp))
+        sheet = workbook_display.add_worksheet('BUG统计')
         formatone = workbook_display.add_format()
         formatone.set_border(1)
         formattwo = workbook_display.add_format()
@@ -617,7 +613,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
         formattitle.set_align('center')
         formattitle.set_bg_color("yellow")
         formattitle.set_bold(True)
-        sheet.merge_range(0, 0, 0, 14, "%s_BUG情况统计".decode('gbk') % project_name_selected, formattitle)
+        sheet.merge_range(0, 0, 0, 14, "{}_BUG情况统计".format(project_name_selected), formattitle)
         sheet.set_column('A:A', 17)
         sheet.set_column('B:B', 10)
         sheet.set_column('C:C', 55)
@@ -670,7 +666,7 @@ class BugSolutionMoreThanOnce(wx.Frame):
             sheet.write(2 + index_data, 14, bug_rootcause_list_total[index_data], formatone)
         workbook_display.close()
         self.button_go.Enable()
-        self.updatedisplay(("结束抓取信息，结束时间{time_end}".format(time_end=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))).decode('gbk'))
+        self.updatedisplay(("结束抓取信息，结束时间{time_end}".format(time_end=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))))
 
 
 if __name__ == '__main__':
